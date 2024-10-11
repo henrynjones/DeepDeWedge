@@ -42,6 +42,12 @@ def prepare_data(
             help="Size of the cubic subtomograms to extract for model fitting. This value must be divisible by 2^{num_downsample_layers}, where {num_downsample_layers} is the number of downsampling layers used in the U-Net."
         ),
     ],
+    split_into: Annotated[
+        int,
+        typer.Option(
+            help="Number of random data-independent partitions to create to asses model consistency"
+        ),
+    ] = 1,
     val_fraction: Annotated[
         float,
         typer.Option(
@@ -114,12 +120,18 @@ def prepare_data(
     Extract cubic sub-tomograms that are used to generate inputs and targets for model fitting. Typically the first command to run.
     """
     # create output directories
-    fitting_subtomo_dir, val_subtomo_dir = setup_subtomo_dir(
-        subtomo_dir=subtomo_dir,
-        project_dir=project_dir,
-        overwrite=overwrite,
-        verbose=verbose,
-    )
+    fitting_subtomo_dir_list = [None for k in range(split_into)]
+    val_subtomo_dir_list = [None for k in range(split_into)]
+    
+    for split_idx in range(split_into):
+        fitting_subtomo_dir_list[split_idx], val_subtomo_dir_list[split_idx] = setup_subtomo_dir(
+            subtomo_dir=subtomo_dir,
+            project_dir=project_dir,
+            overwrite=overwrite,
+            verbose=verbose,
+            split_idx=split_idx,
+        )
+    
     # check if mask_files are provided properly
     if len(mask_files) == 0:
         mask_files = [None] * len(tomo0_files)
@@ -202,25 +214,42 @@ def prepare_data(
             if num_val_subtomos > 0
             else []
         )
+
+        #val_ids is already random, so just need to permute fitting ids
         fitting_ids = [k for k in range(len(subtomos0)) if k not in val_ids]
+        #sample the entre list without replacenement, ie permutation
+        fitting_ids = random.Random(seed).sample(fitting_ids, len(fitting_ids))
+        
+        val_ids_list = [None for k in range(split_into)]
+        fitting_ids_list = [None for k in range(split_into)]
 
-        for idx in sorted(fitting_ids):
-            torch.save(
-                subtomos0[idx].clone(), f"{fitting_subtomo_dir}/subtomo0/{fitting_counter}.pt"
-            )
-            torch.save(
-                subtomos1[idx].clone(), f"{fitting_subtomo_dir}/subtomo1/{fitting_counter}.pt"
-            )
-            fitting_counter += 1
+        val_interval = len(val_ids) // split_into
+        fitting_interval = len(fitting_ids) // split_into
+        
+        for split_idx in range(split_into):
+            fitting_ids_list[split_idx] = fitting_ids[split_idx * fitting_interval : (split_idx * fitting_interval) + fitting_interval]
+            val_ids_list[split_idx] = val_ids[split_idx * val_interval : (split_idx * val_interval) + val_interval]
 
-        for idx in sorted(val_ids):
-            torch.save(
-                subtomos0[idx].clone(), f"{val_subtomo_dir}/subtomo0/{val_counter}.pt"
-            )
-            torch.save(
-                subtomos1[idx].clone(), f"{val_subtomo_dir}/subtomo1/{val_counter}.pt"
-            )
-            val_counter += 1
+        for split_idx in range(split_into):
+            for idx in sorted(fitting_ids_list[split_idx]):
+                torch.save(
+                    subtomos0[idx].clone(), f"{fitting_subtomo_dir}/subtomo0/{fitting_counter}.pt"
+                )
+                torch.save(
+                    subtomos1[idx].clone(), f"{fitting_subtomo_dir}/subtomo1/{fitting_counter}.pt"
+                )
+                fitting_counter += 1
+            fitting_count = 0
+            
+            for idx in sorted(val_ids_list[split_idx]):
+                torch.save(
+                    subtomos0[idx].clone(), f"{val_subtomo_dir}/subtomo0/{val_counter}.pt"
+                )
+                torch.save(
+                    subtomos1[idx].clone(), f"{val_subtomo_dir}/subtomo1/{val_counter}.pt"
+                )
+                val_counter += 1
+            val_counter = 0
 
     if verbose:
         print(f"Done with sub-tomogram extraction.")
@@ -232,13 +261,17 @@ def prepare_data(
         )
 
 
-def setup_subtomo_dir(subtomo_dir, project_dir, overwrite, verbose):
+def setup_subtomo_dir(subtomo_dir, project_dir, overwrite, verbose, split_idx):
     if subtomo_dir is None:
         if project_dir is not None:
-            subtomo_dir = f"{project_dir}/subtomos"
+            subtomo_dir = f"{project_dir}{split_idx}/subtomos"
         else:
             raise ValueError(
                 "subtomo_dir must be provided if project_dir is not provided"
+            )
+    else:
+        raise ValueError(
+                "subtomo dir should not be provided if project_dir is provided"
             )
     if verbose:
         print(f"Saving all subtomograms to '{subtomo_dir}'.")
