@@ -233,20 +233,20 @@ def prepare_data(
         for split_idx in range(split_into):
             for idx in sorted(fitting_ids_list[split_idx]):
                 torch.save(
-                    subtomos0[idx].clone(), f"{fitting_subtomo_dir}/subtomo0/{fitting_counter}.pt"
+                    subtomos0[idx].clone(), f"{fitting_subtomo_dir_list[split_idx]}/subtomo0/{fitting_counter}.pt"
                 )
                 torch.save(
-                    subtomos1[idx].clone(), f"{fitting_subtomo_dir}/subtomo1/{fitting_counter}.pt"
+                    subtomos1[idx].clone(), f"{fitting_subtomo_dir_list[split_idx]}/subtomo1/{fitting_counter}.pt"
                 )
                 fitting_counter += 1
             fitting_count = 0
             
             for idx in sorted(val_ids_list[split_idx]):
                 torch.save(
-                    subtomos0[idx].clone(), f"{val_subtomo_dir}/subtomo0/{val_counter}.pt"
+                    subtomos0[idx].clone(), f"{val_subtomo_dir_list[split_idx]}/subtomo0/{val_counter}.pt"
                 )
                 torch.save(
-                    subtomos1[idx].clone(), f"{val_subtomo_dir}/subtomo1/{val_counter}.pt"
+                    subtomos1[idx].clone(), f"{val_subtomo_dir_list[split_idx]}/subtomo1/{val_counter}.pt"
                 )
                 val_counter += 1
             val_counter = 0
@@ -254,10 +254,10 @@ def prepare_data(
     if verbose:
         print(f"Done with sub-tomogram extraction.")
         print(
-            f"Saved a total of {fitting_counter} sub-tomograms for model fitting to '{fitting_subtomo_dir}'."
+            f"Saved a total of {fitting_counter} sub-tomograms for model fitting to '{fitting_subtomo_dir_list[0]}'."
         )
         print(
-            f"Saved a total of {val_counter} sub-tomograms for validation to '{val_subtomo_dir}'."
+            f"Saved a total of {val_counter} sub-tomograms for validation to '{val_subtomo_dir_list[0]}'."
         )
 
 
