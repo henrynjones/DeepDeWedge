@@ -239,7 +239,7 @@ def prepare_data(
                     subtomos1[idx].clone(), f"{fitting_subtomo_dir_list[split_idx]}/subtomo1/{fitting_counter}.pt"
                 )
                 fitting_counter += 1
-            fitting_count = 0
+            fitting_counter = 0
             
             for idx in sorted(val_ids_list[split_idx]):
                 torch.save(

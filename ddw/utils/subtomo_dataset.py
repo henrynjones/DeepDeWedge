@@ -57,9 +57,18 @@ class SubtomoDataset(Dataset):
     def __getitem__(self, index):
         # load subtomos
         subtomo0_file = f"{self.subtomo_dir}/subtomo0/{index}.pt"
-        subtomo0 = torch.load(subtomo0_file)
+        try:
+            subtomo0 = torch.load(subtomo0_file)
+        except RuntimeError as e:
+            print(subtomo0_file, "PROBLEM FIlE", flush=True)
+            raise e
         subtomo1_file = f"{self.subtomo_dir}/subtomo1/{index}.pt"
-        subtomo1 = torch.load(subtomo1_file)
+        try:
+            subtomo1 = torch.load(subtomo1_file)
+        except RuntimeError as e:
+            print(subtomo1_file, "Also problem file", flush=True)
+            raise e
+
         # rotate subtomos
         if self.rotate_subtomos == True:
             rot_axis, rot_angle = self._sample_rot_axis_and_angle(index)
