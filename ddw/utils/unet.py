@@ -5,6 +5,7 @@ import torch
 import tqdm
 import yaml
 from torch import nn
+from types import NoneType
 
 from .fourier import apply_fourier_mask_to_tomo
 from .masked_loss import masked_loss
@@ -175,6 +176,8 @@ class LitUnet3D(pl.LightningModule):
         logdir = f"{logger.save_dir}/{logger.name}/version_{logger.version}"
         hparams_file = f"{logdir}/hparams.yaml"
         hparams = yaml.safe_load(open(hparams_file, "r"))
+        if isinstance(hparams, NoneType):
+            print("PROBLEM", hparams_file, str(hparam), flush=True)
         hparams[hparam] = value
         with open(hparams_file, "w") as f:
             yaml.dump(hparams, f)
